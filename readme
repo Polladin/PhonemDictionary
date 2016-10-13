@@ -1,0 +1,18 @@
+
+Count of all nodes:
+	46520
+	
+Input file:
+	dictionary.txt
+	
+Output file:
+	dict.txt
+	
+Output format:
+	phonems # wordId
+
+Output example :
+	j o0 sh #2 
+	j o0 l k' i4 #3 
+	j o0 l k u4 #4 
+	j o0 l a4 k #5 
