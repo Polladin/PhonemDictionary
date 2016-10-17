@@ -7,6 +7,8 @@
 
 #include "PhonemNode.hpp"
 
+#include "DictionaryException.hpp"
+
 
 /*
 	PrefixTreeCompressor :
@@ -36,12 +38,46 @@ public:
 				-(4) goto 1
 				
 */
+
+class ComparatorPhonems
+{
+public:
+	bool operator() (const PhonemNode * p1
+		, const PhonemNode * p2)
+	{
+		if (p1->get_type() != p2->get_type())
+		{
+			if (p1->get_type() == PhonemNode::NODE_TYPE_PHONEM)
+				return true;
+
+			return false;
+		}
+
+		switch (p1->get_type())
+		{
+		case PhonemNode::NODE_TYPE_PHONEM:
+			return PhonemNodeCast::to_phonem(p1)->get_phonem() < PhonemNodeCast::to_phonem(p2)->get_phonem();
+
+		case PhonemNode::NODE_TYPE_WORD:
+			return PhonemNodeCast::to_word(p1)->get_val() < PhonemNodeCast::to_word(p2)->get_val();
+
+		case PhonemNode::NODE_TYPE_BEGIN:
+			throw DictionaryException("Bad compare with Phonem Begin");
+		}
+
+		return false;
+	}
+
+};
+
+
 class PrefixTreeCompressorFromEnd : public PrefixTreeCompressor
 {
 public:
 	
 	using t_nodes = std::vector<PhonemNode *>;
-	using t_last_nodes = std::multimap<std::size_t, std::pair<PhonemNode*, PhonemNode*>>;
+	//using t_last_nodes = std::multimap<std::size_t, std::pair<PhonemNode*, PhonemNode*>, decltype(cmp_phonem_nodes)>;
+	using t_last_nodes = std::multimap<PhonemNode*, PhonemNode*, ComparatorPhonems>;
 	using t_prev_collapsed_nodes = std::set<PhonemNode*>;
 
 	/*virtual*/ 
@@ -70,9 +106,8 @@ private:
 							, t_last_nodes & mmapLastPhonems);
 
 	// helper function to insert node to t_last_nodes
-	void put_to_last_phonems(t_last_nodes & mmapLastPhonems, std::size_t phonem, PhonemNode * prevNode, PhonemNode * lastNode)
+	void put_to_last_phonems(t_last_nodes & mmapLastPhonems, PhonemNode * prevNode, PhonemNode * lastNode)
 	{
-		mmapLastPhonems.insert(std::make_pair(phonem
-			, std::make_pair(prevNode, lastNode)));
+		mmapLastPhonems.insert(std::make_pair(lastNode, prevNode));
 	};
 };

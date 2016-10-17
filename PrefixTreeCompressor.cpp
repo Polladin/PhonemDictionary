@@ -2,7 +2,6 @@
 
 #include "PrefixTreeCompressor.hpp"
 
-#include "DictionaryException.hpp"
 
 
 void PrefixTreeCompressorFromEnd::compress(PhonemNode * startNode)
@@ -104,11 +103,9 @@ void PrefixTreeCompressorFromEnd::get_last_phonems(t_nodes stack
 													, t_last_nodes & mmapLastPhonems)
 {
 	// if phonem node the last
-	// ??? TODO : may PhoneWord elements with equal id will be collapsed ???
 	if (nextElem->next.size() == 0 && nextElem->get_type() == PhonemNode::NODE_TYPE_PHONEM)
 	{
 		put_to_last_phonems(mmapLastPhonems
-							, PhonemNodeCast::to_phonem(nextElem)->get_phonem()
 							, stack.back()
 							, nextElem);
 		return;
@@ -125,7 +122,7 @@ void PrefixTreeCompressorFromEnd::get_last_phonems(t_nodes stack
 
 
 void PrefixTreeCompressorFromEnd::collapse_phonems(t_last_nodes & mmapLastPhonems
-													, t_prev_collapsed_nodes & nextMinimization)
+	, t_prev_collapsed_nodes & nextMinimization)
 {
 	using t_pair_nodes = std::pair<PhonemNode*, PhonemNode*>;
 
@@ -136,39 +133,60 @@ void PrefixTreeCompressorFromEnd::collapse_phonems(t_last_nodes & mmapLastPhonem
 	auto ite = mmapLastPhonems.cend();
 
 	// get the first phonem
-	std::size_t ph = itb->first;
+	t_pair_nodes node = *itb;
 	bool is_existInSet{ false };	// is phonem in 'ph' in  'nextMinimization'
-	const t_pair_nodes * nodes = &itb->second; // (prevNode, lastNode)
+	bool is_neddToCollapse{ false };
 
 	while (++itb != ite)
 	{
-		if (itb->first == ph)
-		{	// found the same phonems
-			const  t_pair_nodes * collapsingNodes = &itb->second;
+		if (itb->first->get_type() == node.first->get_type())
+		{
+			if (itb->first->get_type() == PhonemNode::NODE_TYPE_PHONEM)
+			{
+				is_neddToCollapse = PhonemNodeCast::to_phonem(itb->first)->get_phonem()
+									== PhonemNodeCast::to_phonem(node.first)->get_phonem();
+			}
+			else if (itb->first->get_type() == PhonemNode::NODE_TYPE_WORD)
+			{
+				is_neddToCollapse = PhonemNodeCast::to_word(itb->first)->get_val()
+									== PhonemNodeCast::to_word(node.first)->get_val();
+			}
 
-			auto idxNew = find_index_to_node(nodes->first, nodes->second);
-			auto idxOfCollapsedElem = find_index_to_node(collapsingNodes->first, collapsingNodes->second);
+			if (is_neddToCollapse 
+				&& (itb->first->next.size() > 0 || node.first->next.size() > 0))
+			{
+				if (itb->first->next.size() != node.first->next.size()) is_neddToCollapse = false;
+				else if (itb->first->next[0].get() != node.first->next[0].get()) is_neddToCollapse = false;
+			}
+		}
+
+		if (is_neddToCollapse)
+		{
+			const  t_pair_nodes collapsingNodes = *itb;
+
+			auto idxNew = find_index_to_node(node.second, node.first);
+			auto idxOfCollapsedElem = find_index_to_node(collapsingNodes.second, collapsingNodes.first);
 
 			// DELETE NODE HERE
 			// reassigned shared pointer, node with losing pointer will be deleted 
-			collapsingNodes->first->next[idxOfCollapsedElem] = nodes->first->next[idxNew];
+			collapsingNodes.second->next[idxOfCollapsedElem] = node.second->next[idxNew];
 
-			nextMinimization.insert(collapsingNodes->first);
+			nextMinimization.insert(collapsingNodes.second);
 			if (!is_existInSet)
 			{
-				nextMinimization.insert(nodes->first);
+				nextMinimization.insert(node.second);
 				is_existInSet = true;
 			}
+
+			is_neddToCollapse = false;
 		}
 		else
 		{
 			// initialize new phonem
-			ph = itb->first;
-			nodes = &itb->second;
+			node = *itb;
 			is_existInSet = false;
 		}
 	}
-
 	// 'mmapLastPhonems' may contains pointer to deleted objects
 	mmapLastPhonems.clear();
 }
@@ -180,13 +198,12 @@ void PrefixTreeCompressorFromEnd::find_prev_nodes_for(t_nodes stack
 														, t_last_nodes & mmapLastPhonems)
 {
 
-	// ??? TODO : may PhoneWord elements with equal id will be collapsed ???
 	if (nextMinimization.find(nextElem) != nextMinimization.end()
-		&& nextElem->get_type() == PhonemNode::NODE_TYPE_PHONEM)
+		&& (nextElem->get_type() == PhonemNode::NODE_TYPE_PHONEM || nextElem->get_type() == PhonemNode::NODE_TYPE_WORD))
 	{
 		
-		put_to_last_phonems(mmapLastPhonems
-							, PhonemNodeCast::to_phonem(nextElem)->get_phonem()
+		if (nextElem->next.size() == 1)
+			put_to_last_phonems(mmapLastPhonems
 							, stack.back()
 							, nextElem);
 

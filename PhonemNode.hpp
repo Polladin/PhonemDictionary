@@ -25,7 +25,7 @@ public:
 
 	PhonemNode() { ++countOfNodes; }
 
-	virtual t_node_type get_type() = 0;
+	virtual t_node_type get_type() const = 0;
 
 	virtual ~PhonemNode() { --countOfNodes;  }
 
@@ -49,9 +49,9 @@ public:
 	{}
 
 	/*virtual*/ 
-	t_node_type get_type() override { return NODE_TYPE_PHONEM; }
+	t_node_type get_type() const override { return NODE_TYPE_PHONEM; }
 
-	std::size_t get_phonem() { return phoneVal; }
+	std::size_t get_phonem() const { return phoneVal; }
 
 private:
 	std::size_t phoneVal;
@@ -66,7 +66,7 @@ class PhonemBegin : public PhonemNode
 {
 public:
 	/*virtual*/
-	t_node_type get_type() override { return NODE_TYPE_BEGIN; }
+	t_node_type get_type() const override { return NODE_TYPE_BEGIN; }
 };
 
 
@@ -83,9 +83,9 @@ public:
 	{}
 
 	/*virtual*/
-	t_node_type get_type() override { return NODE_TYPE_WORD; }
+	t_node_type get_type() const override { return NODE_TYPE_WORD; }
 
-	int get_val() { return wordId; }
+	int get_val() const { return wordId; }
 
 private:
 	int wordId;
@@ -99,7 +99,16 @@ private:
 class PhonemNodeCast
 {
 public:
+	PhonemNodeCast() = delete;
+
 	static PhonemBegin *	to_begin(PhonemNode * node);
 	static Phonem *			to_phonem(PhonemNode * node);
 	static PhonemWord *		to_word(PhonemNode * node);
+
+	static const PhonemBegin *		to_begin(const PhonemNode * node);
+	static const Phonem *			to_phonem(const PhonemNode * node);
+	static const PhonemWord *		to_word(const PhonemNode * node);
+
+	static bool cmp_phonem_node(Phonem * p1, Phonem * p2);
+	static bool cmp_phonem_node(PhonemWord * p1, PhonemWord * p2);
 };
